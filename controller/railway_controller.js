@@ -15,6 +15,9 @@ module.exports.processRequest = function (data, callback_to_router) {
     else if ( action == AppConstants.TRAIN_RUNNING_STATUS_ACTION ) {
         getTrainRunningStatus(data, callback_to_router);
     }
+    else if ( action == AppConstants.LIVE_STATUS_ACTION ) {
+        getLiveStation(data, callback_to_router);
+    }
 }
 
 
@@ -87,7 +90,7 @@ function prepare_train_schedule_response(rawResponse) {
 }
 
 
-/* Train runnign status methods */
+/* Train running status methods */
 function getTrainRunningStatus(data, callback_to_router) {
     var parameters = data.result.parameters;
     var train_number = parameters.TRAIN_NBR;
@@ -106,6 +109,41 @@ function prepare_train_running_status_response(rawResponse) {
     var position = rawResponse.position;
     var display_text = position;
     var response = {};
+    response['speech'] = display_text;
+    response['displayText'] = display_text;
+    response['data'] = {};
+    response['contextOut'] = [];
+    response['source'] = "ChatBot";
+    return response;
+}
+
+
+/*Live station method*/
+function getLiveStation(data, callback_to_router) {
+    var parameters = data.result.parameters;
+    var station_code = parameters.STN_NM;
+    var hrs = parameters.HRS;
+    var railway_api_url = AppConstants.RAILWAY_API_DOMAIN_URL + '/arrivals/station/' + station_code +
+                          '/hours/' + hrs + '/apikey/' + AppConstants.RAILWAY_API_KEY + '/';
+    externalAPIClient.getRequest(railway_api_url, function (rawResponse) {
+        var response_to_apiAI = prepare_live_station_response(rawResponse);
+        callback_to_router(response_to_apiAI);
+    });
+}
+
+function prepare_live_station_response(rawResponse) {
+    var status = rawResponse.response_code;
+    var station_code = rawResponse.station;
+    var trains = rawResponse.train;
+    var display_text = station_code + '\n\n';
+    var response = {};
+    trains.forEach(function (train) {
+        display_text += train.number + ', ' + train.name + '\n' +
+                        'SA-' + train.scharr + ', SD-' + train.schdep + '\n' +
+                        'LA-' + train.delayarr + ', LD-' + train.delaydep + '\n' +
+                        'EA-' + train.actarr + ', ED-' + train.actdep + '\n\n';
+
+    });
     response['speech'] = display_text;
     response['displayText'] = display_text;
     response['data'] = {};
