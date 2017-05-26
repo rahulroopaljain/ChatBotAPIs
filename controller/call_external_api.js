@@ -13,6 +13,7 @@ module.exports.getRequest = function(url, callback) {
 
         response.on("end", function (err) {
             // finished transferring data
+            //console.log(buffer);
             data = JSON.parse(buffer);
             callback(data);
         });

@@ -4,5 +4,6 @@ module.exports = {
     PNR_ACTION : "PNRStatus",
     TRAIN_SCHEDULE_ACTION : "TrainSchedule",
     LIVE_STATUS_ACTION : "LiveStation",
+    TRAIN_BETWEEN_STATIONS_ACTION : "TrainBetweenStations",
     TRAIN_RUNNING_STATUS_ACTION : "TrainRunningStatus"
 }
