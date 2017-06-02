@@ -1,4 +1,5 @@
-const AppConstants = require('./AppConstants');
+const logger = require('winston');
+const AppConstants = require('./app_constants');
 const externalAPIClient = require('./call_external_api');
 const processStatus = require('./process_status');
 
@@ -6,6 +7,11 @@ var action = '';
 
 module.exports.processRequest = function (data, callback_to_router) {
     action = data.result.action;
+
+    logger.info('POST Request received for /railindigo/api with action \'' + action + '\'');
+    logger.info('Source: ' + data.originalRequest.source + ', Sender ID: ' + data.originalRequest.data.sender.id);
+    logger.debug('request payload: ' + JSON.stringify(data));
+
     if ( action == AppConstants.PNR_ACTION ) {
         checkPNRStatus(data, callback_to_router);
     }
@@ -21,6 +27,10 @@ module.exports.processRequest = function (data, callback_to_router) {
     else if ( action == AppConstants.TRAIN_BETWEEN_STATIONS_ACTION ) {
         getTrainBetweenStations(data, callback_to_router);
     }
+    else {
+        logger.error('Action \'' + action + '\' is missing');
+        callback_to_router(responseObjectToApiAI(AppConstants.GENERIC_ERROR_MESSAGE));
+    }
 }
 
 
@@ -28,15 +38,16 @@ module.exports.processRequest = function (data, callback_to_router) {
 /* PNR related methods */
 function checkPNRStatus(data, callback_to_router) {
     var parameters = data.result.parameters;
+    logger.info('parameters: ' + parameters);
     var PNR = parameters.PNR_NBR;
     var railway_api_url = AppConstants.RAILWAY_API_DOMAIN_URL + '/pnr_status/pnr/' + PNR + '/apikey/' + AppConstants.RAILWAY_API_KEY + '/';
     externalAPIClient.getRequest(railway_api_url, function (rawResponse) {
-        var response_to_apiAI = prepare_pnr_status_response(rawResponse);
+        var response_to_apiAI = preparePnrStatusResponse(rawResponse);
         callback_to_router(response_to_apiAI);
     });
 }
 
-function prepare_pnr_status_response(rawResponse) {
+function preparePnrStatusResponse(rawResponse) {
     var status = rawResponse.response_code;
     var chart_status = rawResponse.chart_prepared == 'Y' ? 'Chart prepared' : 'Chart not prepared';
     var train = rawResponse.train;
@@ -53,21 +64,31 @@ function prepare_pnr_status_response(rawResponse) {
 /* Train Schedule related methods */
 function getTrainSchedule(data, callback_to_router) {
     var parameters = data.result.parameters;
+
+    logger.info('parameters: ' + JSON.stringify(parameters));
+
     var train_number = parameters.TRAIN_NBR;
+
     if ( train_number.length != 5 || isNaN(train_number)) {
-        var display_text = "Invalid train no.: " + train_number + "\nTrain no. should be 5 digit numeric.";
+        var display_text = "Invalid train no.: " + train_number + "\nTrain no. should be 5 digit numeric value.";
         callback_to_router(responseObjectToApiAI(display_text));
     }
     else {
         var railway_api_url = AppConstants.RAILWAY_API_DOMAIN_URL + '/route/train/' + train_number + '/apikey/' + AppConstants.RAILWAY_API_KEY + '/';
-        externalAPIClient.getRequest(railway_api_url, function (rawResponse) {
-            var response_to_apiAI = prepare_train_schedule_response(rawResponse);
+        externalAPIClient.getRequest(railway_api_url, function (rawResponse, err) {
+            var response_to_apiAI = '';
+            if (err) {
+                response_to_apiAI = responseObjectToApiAI(AppConstants.RAILWAY_SERVER_ERROR_MESSAGE);
+            }
+            else {
+                response_to_apiAI = prepareTrainScheduleResponse(rawResponse);
+            }
             callback_to_router(response_to_apiAI);
         });
     }
 }
 
-function prepare_train_schedule_response(rawResponse) {
+function prepareTrainScheduleResponse(rawResponse) {
     var status = rawResponse.response_code;
     var display_text = '';
     if ( status == 200 || status ==204 ) {
@@ -91,17 +112,26 @@ function prepare_train_schedule_response(rawResponse) {
 /* Train running status methods */
 function getTrainRunningStatus(data, callback_to_router) {
     var parameters = data.result.parameters;
+
+    logger.info('parameters: ' + JSON.stringify(parameters));
+
     var train_number = parameters.TRAIN_NBR;
     var inq_date = parameters.INQ_DATE.replace(/-/g, '');
     var railway_api_url = AppConstants.RAILWAY_API_DOMAIN_URL + '/live/train/' + train_number +
                           '/doj/' + inq_date + '/apikey/' + AppConstants.RAILWAY_API_KEY + '/';
-    externalAPIClient.getRequest(railway_api_url, function (rawResponse) {
-        var response_to_apiAI = prepare_train_running_status_response(rawResponse);
+    externalAPIClient.getRequest(railway_api_url, function (rawResponse, err) {
+        var response_to_apiAI = '';
+        if (err) {
+            response_to_apiAI = responseObjectToApiAI(AppConstants.RAILWAY_SERVER_ERROR_MESSAGE);
+        }
+        else {
+            response_to_apiAI = prepareTrainRunningStatusResponse(rawResponse);
+        }
         callback_to_router(response_to_apiAI);
     });
 }
 
-function prepare_train_running_status_response(rawResponse) {
+function prepareTrainRunningStatusResponse(rawResponse) {
     var status = rawResponse.response_code;
     var train = rawResponse.train_number;
     var display_text = '';
@@ -119,17 +149,26 @@ function prepare_train_running_status_response(rawResponse) {
 /*Live station method*/
 function getLiveStation(data, callback_to_router) {
     var parameters = data.result.parameters;
+
+    logger.info('parameters: ' + JSON.stringify(parameters));
+
     var station_code = parameters.STN_NM;
     var hrs = parameters.HRS;
     var railway_api_url = AppConstants.RAILWAY_API_DOMAIN_URL + '/arrivals/station/' + station_code +
                           '/hours/' + hrs + '/apikey/' + AppConstants.RAILWAY_API_KEY + '/';
-    externalAPIClient.getRequest(railway_api_url, function (rawResponse) {
-        var response_to_apiAI = prepare_live_station_response(rawResponse);
+    externalAPIClient.getRequest(railway_api_url, function (rawResponse, err) {
+        var response_to_apiAI = '';
+        if (err) {
+            response_to_apiAI = responseObjectToApiAI(AppConstants.RAILWAY_SERVER_ERROR_MESSAGE);
+        }
+        else {
+            response_to_apiAI = prepareLiveStationResponse(rawResponse);
+        }
         callback_to_router(response_to_apiAI);
     });
 }
 
-function prepare_live_station_response(rawResponse) {
+function prepareLiveStationResponse(rawResponse) {
     var status = rawResponse.response_code;
     var station_code = rawResponse.station;
     var trains = rawResponse.trains;
@@ -151,17 +190,26 @@ function prepare_live_station_response(rawResponse) {
 /*Train between stations method*/
 function getTrainBetweenStations(data, callback_to_router) {
     var parameters = data.result.parameters;
+
+    logger.info('parameters: ' + JSON.stringify(parameters));
+
     var source_code = parameters.SOURCE_STN;
     var dest_code = parameters.DEST_STN;
     var railway_api_url = AppConstants.RAILWAY_API_DOMAIN_URL + '/between/source/' + source_code +
                           '/dest/' + dest_code + '/apikey/' + AppConstants.RAILWAY_API_KEY + '/';
-    externalAPIClient.getRequest(railway_api_url, function (rawResponse) {
-        var response_to_apiAI = prepare_train_between_stations_response(parameters, rawResponse);
+    externalAPIClient.getRequest(railway_api_url, function (rawResponse, err) {
+        var response_to_apiAI = '';
+        if (err) {
+            response_to_apiAI = responseObjectToApiAI(AppConstants.RAILWAY_SERVER_ERROR_MESSAGE);
+        }
+        else {
+            response_to_apiAI = prepareTrainBetweenStationsResponse(parameters, rawResponse);
+        }
         callback_to_router(response_to_apiAI);
     });
 }
 
-function prepare_train_between_stations_response(parameters, rawResponse) {
+function prepareTrainBetweenStationsResponse(parameters, rawResponse) {
     var status = rawResponse.response_code;
     var trains = rawResponse.train;
     var display_text = 'No train found between ' + parameters.SOURCE_STN + ' & ' + parameters.DEST_STN + '\n';
@@ -194,7 +242,7 @@ function getTrainRunningDays(train) {
 function responseObjectToApiAI(display_text) {
     var response = {};
     response['speech'] = display_text;
-    response['displayText'] = display_text;
+    response['displayText'] = '';
     response['data'] = {};
     response['contextOut'] = [];
     response['source'] = "ChatBot";

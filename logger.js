@@ -1,33 +1,30 @@
 const winston = require('winston');
-const fs = require('fs');
 const moment = require('moment');
-const uuid = require('uuid/v1');
+require('winston-daily-rotate-file');
 
-var today = moment().format('YYYY-MM-DD');
-var log_file_name = 'logs/railindigo-' + today + '.log';
+var request_uuid;
 
-if (!fs.existsSync(log_file_name)) {
-    fs.closeSync(fs.openSync(log_file_name, 'w'));
+module.exports.setRequestUniqueID = function (uuid) {
+    request_uuid = uuid;
 }
 
 
 function customFileFormatter(options) {
-    return options.timestamp() + ' [' + options.level.toUpperCase() + '] ' + uuid() + ' ' + (undefined !== options.message ? options.message : '') +
+    return options.timestamp() + ' [' + options.level.toUpperCase() + '] ' + request_uuid + ' ' + (undefined !== options.message ? options.message : '') +
         (options.meta && Object.keys(options.meta).length ? JSON.stringify(options.meta) : '');
 }
 
 winston.remove(winston.transports.Console);
-winston.add(winston.transports.File,
-    {
-        timestamp: function () {
-            return moment().format();
-        },
-        json: false,
-        filename: log_file_name,
-        formatter: customFileFormatter
-    }
-);
 
-module.exports = function (req, res, next) {
-    next()
-};
+winston.add(winston.transports.DailyRotateFile,{
+    timestamp: function () {
+        return moment().format();
+    },
+    filename: './logs/-chatbot.log',
+    datePattern: 'yyyy-MM-dd',
+    prepend: true,
+    json: false,
+    localTime: true,
+    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+    formatter: customFileFormatter
+});
