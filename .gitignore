@@ -1,0 +1,4 @@
+certs/
+logs/
+.idea/
+node_modules/
