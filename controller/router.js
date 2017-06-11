@@ -10,6 +10,7 @@ router.post('/railindigo/api', function(req, res){
         res.set('Content-Type', 'application/json');
         res.status(200).send(response);
         logger.info('Response sent back to client: ' + JSON.stringify(response));
+        res.end();
     });
 });
 
@@ -18,7 +19,9 @@ router.get('/sping', function(req, res){
     logger.info('GET /sping call started.');
     res.status(200).send("ok");
     logger.info('/sping 200 \'OK\', completed successfully.');
+    res.end();
 });
 
 
 module.exports = router;
+
