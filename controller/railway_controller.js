@@ -2,7 +2,6 @@ const logger = require('winston');
 const AppConstants = require('./app_constants');
 const externalAPIClient = require('./call_external_api');
 const processStatus = require('./process_status');
-const moment = require('moment');
 
 var action = '';
 
@@ -271,13 +270,10 @@ function trainRunningParameterSlotFilling(parameters, callback) {
         return true;
     }
     else if (parameters.INQ_DATE == '') {
-        var today = moment().subtract(0, 'day');
-        var yesterday = moment().subtract(1, 'day');
-        var dBfrYesterday = moment().subtract(2, 'day');
         var data = {"facebook": {"text":"Enter day (today/yesterday) or select from below: ","quick_replies":[
-            {"content_type":"text","title":today.format('Do MMM'),"payload":today.format('YYYYMMDD')},
-            {"content_type":"text","title":yesterday.format('Do MMM'),"payload":yesterday.format('YYYYMMDD')},
-            {"content_type":"text","title":dBfrYesterday.format('Do MMM'),"payload":dBfrYesterday.format('YYYYMMDD')}
+            {"content_type":"text","title":"Today", "payload":"today"},
+            {"content_type":"text","title":"Yesterday", "payload":"yesterday"},
+            {"content_type":"text","title":"Day Before Yesterday", "payload":"day before yesterday"}
         ]}};
         callback(responseObjectToApiAI('', data));
         return true;
