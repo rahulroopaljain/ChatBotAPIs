@@ -21,7 +21,7 @@ module.exports.processRequest = function (data, callback_to_router) {
     else if ( action == AppConstants.TRAIN_RUNNING_STATUS_ACTION ) {
         getTrainRunningStatus(data, callback_to_router);
     }
-    else if ( action == AppConstants.LIVE_STATUS_ACTION ) {
+    else if ( action == AppConstants.LIVE_STATION_ACTION ) {
         getLiveStation(data, callback_to_router);
     }
     else if ( action == AppConstants.TRAIN_BETWEEN_STATIONS_ACTION ) {
